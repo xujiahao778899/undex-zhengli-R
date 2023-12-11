@@ -1,0 +1,88 @@
+library(tidyr)
+library(dplyr)
+library(stringdist)
+reverse_complement <- function(sequence) {
+  complemented_sequence <- chartr("ATCG", "TAGC", rev(strsplit(sequence, "")[[1]]))
+  return(paste(complemented_sequence, collapse = ""))
+}
+
+
+x<-read.table("/sdf/xujiahao/test/test4/undex_sum.txt")
+df <- separate(x, col = V1, into = c("I7Index", "I5Index"), sep = "[+]")
+colnames(df)<-c("I7Index","I5Index","hit","lane","type")
+final<-data.frame()
+sample<-read.table("/sdf/xujiahao/test/test4/sample.txt",header = T)
+#####处理单端
+final_xiangsi<-data.frame()
+danduan_df<-df[is.na(df$I5Index)==T,]
+danduan_sample<-sample[is.na(sample$I5Index序列)==T,]
+long<-unique(nchar(danduan_df$I7Index))
+for (i in long) {
+  y3<-danduan_df[danduan_df$I7Index %in% danduan_df$I7Index[nchar(danduan_df$I7Index)==i],]
+  y4<-danduan_sample[danduan_sample$I7Index序列%in% danduan_sample$I7Index序列[nchar(danduan_sample$I7Index序列)==i],]
+  for (n in unique(y3$lane)) {
+    y<-y3[y3$lane==n,]
+    y2<-y4[y4$Lane==n,]
+    xiangsi<-1-stringdistmatrix(y$I7Index,y2$I7Index序列,method='jw')
+    colnames(xiangsi)<-y2$I7Index序列
+    rownames(xiangsi)<-y$I7Index
+    max_values <- apply(xiangsi, 1, function(row) {
+      max_value <- max(row)
+      max_col <- names(row)[which.max(row)]
+      return(c(Max_Value = max_value, Max_Column = max_col))
+    })
+    xiangsi2 <- as.data.frame(cbind(xiangsi, t(max_values)))
+    xiangsi2<-xiangsi2[,colnames(xiangsi2)%in%c("Max_Value","Max_Column")]
+    colnames(xiangsi2)<-c("correlation","target_I7Index")
+    xiangsi2$I7Index<-rownames(xiangsi2)
+    xiangsi3<-left_join(y,xiangsi2,by="I7Index")
+    colnames(y2)[which(colnames(y2)=="I7Index序列")]<-"target_I7Index"
+    xiangsi3<-left_join(xiangsi3,y2,by="target_I7Index")
+    xiangsi3<-xiangsi3%>%select(I7Index,I5Index,hit,lane,type,correlation,target_I7Index,样品名称)
+    colnames(xiangsi3)<-c("I7Index","I5Index","hit","lane","type","correlation","target_I7Index","样品名称")
+    final_xiangsi<-rbind(final_xiangsi,xiangsi3)
+    
+  }
+}
+
+
+shuangduan_df<-df[is.na(df$I5Index)==F,]
+complemented_sequences <- lapply(shuangduan_df$I5Index, reverse_complement)
+complemented_sequences<-unlist(complemented_sequences)
+shuangduan_df$Reverse_index5<-complemented_sequences
+shuangduan_df$I7_I5<-paste0(shuangduan_df$I7Index,"+",shuangduan_df$Reverse_index5)
+shuangduan_sample<-sample[is.na(sample$I5Index序列)==F,]
+shuangduan_sample$I7_I5<-paste0(shuangduan_sample$I7Index序列,"+",shuangduan_sample$I5Index序列)
+long<-unique(nchar(shuangduan_df$I7Index))
+for (i in long) {
+  y3<-shuangduan_df[shuangduan_df$I7Index %in% shuangduan_df$I7Index[nchar(shuangduan_df$I7Index)==i],]
+  y4<-shuangduan_sample[shuangduan_sample$I7Index序列%in% shuangduan_sample$I7Index序列[nchar(shuangduan_sample$I7Index序列)==i],]
+  for (n in unique(y3$lane)) {
+    y<-y3[y3$lane==n,]
+    y2<-y4[y4$Lane==n,]
+    xiangsi_i7_i5<-1-stringdistmatrix(y$I7_I5,y2$I7_I5,method='jw')
+    colnames(xiangsi_i7_i5)<-y2$I7_I5
+    rownames(xiangsi_i7_i5)<-y$I7_I5
+    max_values <- apply(xiangsi_i7_i5, 1, function(row) {
+      max_value <- max(row)
+      max_col <- names(row)[which.max(row)]
+      return(c(Max_Value = max_value, Max_Column = max_col))
+    })
+    xiangsi_i7_i5 <- as.data.frame(cbind(xiangsi_i7_i5, t(max_values)))
+    xiangsi_i7_i5<-xiangsi_i7_i5[,colnames(xiangsi_i7_i5)%in%c("Max_Value","Max_Column")]
+    colnames(xiangsi_i7_i5)<-c("correlation","target_I7Index")
+    xiangsi_i7_i5$I7_I5<-rownames(xiangsi_i7_i5)
+    xiangsi_i7_i5<-left_join(y,xiangsi_i7_i5,by="I7_I5")
+    colnames(y2)[which(colnames(y2)=="I7_I5")]<-"target_I7Index"
+    xiangsi_i7_i5<-left_join(xiangsi_i7_i5,y2,by="target_I7Index")
+    xiangsi_i7_i5<-xiangsi_i7_i5%>%select(I7Index,I5Index,hit,lane,type,correlation,target_I7Index,样品名称)
+    colnames(xiangsi_i7_i5)<-c("I7Index","I5Index","hit","lane","type","correlation","target_I7Index","样品名称")
+    final_xiangsi<-rbind(final_xiangsi,xiangsi_i7_i5)
+  
+  }
+}
+
+final_xiangsi$数据量<-final_xiangsi$hit*300/1000000000
+
+
+
