@@ -11,7 +11,7 @@ x<-read.table("/sdf/xujiahao/test/test4/undex_sum.txt")
 df <- separate(x, col = V1, into = c("I7Index", "I5Index"), sep = "[+]")
 colnames(df)<-c("I7Index","I5Index","hit","lane","type")
 final<-data.frame()
-sample<-read.table("/sdf/xujiahao/test/test4/sample.txt",header = T)
+sample<-read.table("/sdf/xujiahao/test/test4/sample.txt",header = T,check.names = F)
 #####处理单端
 final_xiangsi<-data.frame()
 danduan_df<-df[is.na(df$I5Index)==T,]
@@ -82,7 +82,52 @@ for (i in long) {
   }
 }
 
-final_xiangsi$数据量<-final_xiangsi$hit*300/1000000000
+final_xiangsi$数据量G<-final_xiangsi$hit*300/1000000000
+
+
+####单端去重
+danduan_df<-df[is.na(final_xiangsi$I5Index)==T,]
+long<-unique(nchar(danduan_df$I7Index))
+for (z in long) {
+  y3<-danduan_df[danduan_df$I7Index %in% danduan_df$I7Index[nchar(danduan_df$I7Index)==z],]
+  y4<-danduan_sample[danduan_sample$I7Index序列%in% danduan_sample$I7Index序列[nchar(danduan_sample$I7Index序列)>=z],]
+  for (m in unique(y3$lane)) {
+    y3<-y3[y3$lane==m,]
+    
+  }
+  
+}
+
+
+####单端去重
+danduan_df<-final_xiangsi[is.na(final_xiangsi$I5Index)==T,]
+danduan_df$dup<-TRUE
+for (z1 in c(1:nrow(danduan_df))) {
+  lane<-sample[grep(danduan_df[z1,]$I7Index,sample$I7Index序列),]$Lane
+  is_no<-danduan_df[z1,]$lane%in%lane
+  danduan_df[z1,]$dup<-is_no
+  
+}
+
+###双端去重
+shuangduan_df<-final_xiangsi[is.na(final_xiangsi$I5Index)==F,]
+complemented_sequences <- lapply(shuangduan_df$I5Index, reverse_complement)
+complemented_sequences<-unlist(complemented_sequences)
+shuangduan_df$Reverse_index5<-complemented_sequences
+shuangduan_df$dup<-TRUE
+shuangduan_sample<-sample[is.na(sample$I5Index序列)==F,]
+
+for (z in c(1:nrow(shuangduan_df))) {
+  sample_i7<-shuangduan_sample[grep(shuangduan_df[z,]$I7Index,shuangduan_sample$I7Index序列),]$样品名称
+  sample_i5<-shuangduan_sample[grep(shuangduan_df[z,]$Reverse_index5,shuangduan_sample$I5Index序列),]$样品名称
+  sample_i7_i5<-intersect(sample_i7, sample_i5)
+  lane<-shuangduan_sample$Lane[shuangduan_sample$样品名称%in%sample_i7_i5]
+  is_no<-shuangduan_df[z,]$lane%in%lane
+  shuangduan_df[z,]$dup<-is_no
+}
+shuangduan_df<-shuangduan_df%>%select(colnames(danduan_df))
+final_xiangsi_2<-rbind(danduan_df,shuangduan_df)
+final_xiangsi_2<-final_xiangsi_2[final_xiangsi_2$dup==F,]
 
 
 
